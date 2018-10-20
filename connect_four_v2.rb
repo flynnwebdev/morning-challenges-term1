@@ -30,9 +30,18 @@
 # The columns are numbered 0-6 left to right.
 
 class Connect4
+  
+  # Describe the token connection lines in terms of an offset vector
+  # The line going in the opposite direction is simply the negative of the vector
+  # North is up, and north and west are positive offsets
+  @@connect_lines = [
+    [0, 1],     # north-south vertical
+    [1, 0],     # east-west horizontal
+    [1, 1],     # northeast-southwest diagonal
+    [-1, 1]     # northwest-southeast diagonal
+  ]
 
   def initialize
-    #your code here
     @cols = Array.new(7) { Array.new }
     @player = 1
     @finished = false
@@ -43,48 +52,54 @@ class Connect4
     return "Game has finished!" if @finished
     # check if the column is full
     return "Column full!" if @cols[column].length >= 6
-    # insert the player id into the column
-    @cols[column] << @player
+    # create a data structure to represent the token
+    token = {
+      player: @player,
+      runlengths: Array.new(4) { 1 }
+    }
+    # insert token into column
+    @cols[column] << token    
     row = @cols[column].length - 1
-    # check each possible vector that includes the current move for a match 4
-    if  hasWon(row, column, -1, 1) || # check diagonal
-        hasWon(row, column, 1, 1) || # check other diagonal
-        hasWon(row, column, 0, -1) || # check vertical
-        hasWon(row, column, 1, 0)  # check horizontal
-          @finished = true
-          return "Player #{@player} wins!"
+    @@connect_lines.each_with_index do |offset, index|
+      updateTokens(token, getNeighbour(column + offset[0], row + offset[1]), index)
+      updateTokens(token, getNeighbour(column - offset[0], row - offset[1]), index)
+      if token[:runlengths].max == 4
+        @finished = true
+        return "Player #{@player} wins!"
+      end
     end
     # switch player
     @player = 3 - @player
     return "Player #{3 - @player} has a turn"
-  end  
-
-  # Given the row and column of the current move and a vector, determine if there is a line of 4 tokens
-  # by this player, including the current move. If so, then the player wins.
-  def hasWon(row, column, vx, vy)
-    sumRunLength(row, column, vx, vy) + sumRunLength(row, column, -vx, -vy) - 1 >= 4
   end
 
   private
 
-  # Recursively sum continuous run of current player tokens along the given vector
-  def sumRunLength(row_index, col_index, row_offset, col_offset)
-    return 0 if col_index < 0 || row_index < 0 || @cols[col_index][row_index] != @player
-    sumRunLength(row_index + row_offset, col_index + col_offset, row_offset, col_offset) + 1
+  def updateTokens(token, neighbour, index)
+    if neighbour
+      token[:runlengths][index] += neighbour[:runlengths][index]
+      neighbour[:runlengths][index] = token[:runlengths][index]
+    end
+  end
+
+  def getNeighbour(col, row)
+    return nil if col < 0 || row < 0 || @cols[col][row][:player] != @player
+    @cols[col][row]
+  rescue
+    nil
   end
 
 end
 
-
-# start = Time.now
-# 10000.times do
-#   x = Connect4.new
-#   x.play(1)
-#   x.play(1)
-#   x.play(2)
-#   x.play(2)
-#   x.play(3)
-#   x.play(3)
-#   x.play(4)
-# end
-# puts Time.now - start
+start = Time.now
+10000.times do
+  x = Connect4.new
+  x.play(1)
+  x.play(1)
+  x.play(2)
+  x.play(2)
+  x.play(3)
+  x.play(3)
+  x.play(4)
+end
+puts Time.now - start
